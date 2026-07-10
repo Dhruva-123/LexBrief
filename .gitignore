@@ -1,0 +1,31 @@
+# Python bytecode cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE and Editor configuration
+.vscode/
+.idea/
+*.code-workspace
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Heavy model weights and checkpoints (ignored due to size limits)
+models/
+rhetorical_role_module/models/hierarchical_bilstm_crf/checkpoints/
+rhetorical_role_module/models/embeddings/weights/
+
+# Hugging Face caches
+.cache/
+
+# Local run outputs and cached predictions (keep the folder structure but ignore content)
+outputs/*
+!outputs/.gitkeep

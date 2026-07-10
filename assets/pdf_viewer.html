@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
+<style>
+  html, body { margin: 0; padding: 0; background: #f8fafc; font-family: sans-serif; }
+  #toolbar {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+    background: #323639; color: #fff; font-size: 13px;
+  }
+  #toolbar button {
+    background: #202124; color: #fff; border: 0; border-radius: 4px;
+    padding: 4px 10px; cursor: pointer;
+  }
+  #viewerWrap {
+    position: relative; background: #525659;
+    padding: 16px 0;
+  }
+  .pageWrap {
+    position: relative; margin: 0 auto 16px auto; width: fit-content;
+    background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    scroll-margin-top: 50px;
+  }
+  canvas { display: block; }
+  .textLayer {
+    position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+    overflow: hidden; line-height: 1; opacity: 0.25;
+  }
+  .textLayer span {
+    position: absolute; white-space: pre; transform-origin: 0 0; color: transparent;
+  }
+  .textLayer span.highlight {
+    background: rgba(255, 235, 59, 0.75); color: transparent; opacity: 1;
+    border-radius: 2px;
+  }
+  #status { margin-left: auto; font-size: 12px; color: #cbd5e1; }
+</style>
+</head>
+<body>
+<div id="toolbar">
+  <button id="prevBtn" type="button">Prev</button>
+  <span id="pageLabel">Page 1 / 1</span>
+  <button id="nextBtn" type="button">Next</button>
+  <span style="margin: 0 8px; color: #64748b;">|</span>
+  <button id="zoomOutBtn" type="button">Zoom -</button>
+  <span id="zoomLabel" style="min-width: 36px; display: inline-block; text-align: center;">125%</span>
+  <button id="zoomInBtn" type="button">Zoom +</button>
+  <span id="status"></span>
+</div>
+<div id="viewerWrap"><div id="pageHost"></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+const CONFIG = __CONFIG__;
+
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+let pdfDoc = null;
+let currentPage = 1;
+let totalPages = 0;
+let highlights = [];
+let renderTask = null;
+let currentScale = 1.25;
+
+function normalize(text) {
+  return (text || "")
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/\u00AD/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function setStatus(message) {
+  document.getElementById("status").textContent = message || "";
+}
+
+function updatePageLabel() {
+  document.getElementById("pageLabel").textContent = `Page ${currentPage} / ${totalPages}`;
+}
+
+async function renderCurrentPage() {
+  if (!pdfDoc) return;
+  const host = document.getElementById("pageHost");
+  host.innerHTML = "";
+  const page = await pdfDoc.getPage(currentPage);
+  const viewport = page.getViewport({ scale: currentScale });
+  const wrap = document.createElement("div");
+  wrap.className = "pageWrap";
+  wrap.style.width = `${viewport.width}px`;
+  wrap.style.height = `${viewport.height}px`;
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  wrap.appendChild(canvas);
+
+  const textLayer = document.createElement("div");
+  textLayer.className = "textLayer";
+  textLayer.style.width = `${viewport.width}px`;
+  textLayer.style.height = `${viewport.height}px`;
+  wrap.appendChild(textLayer);
+  host.appendChild(wrap);
+
+  if (renderTask) {
+    try { await renderTask.promise; } catch (e) {}
+  }
+  renderTask = page.render({ canvasContext: ctx, viewport });
+  await renderTask.promise;
+
+  const textContent = await page.getTextContent();
+  const pageHighlights = highlights.filter(item => item.page === currentPage);
+  renderTextLayer(textLayer, textContent, viewport, pageHighlights);
+  updatePageLabel();
+  wrap.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function renderTextLayer(layer, textContent, viewport, pageHighlights) {
+  const items = textContent.items;
+  const spans = [];
+  let fullText = "";
+
+  items.forEach((item, index) => {
+    const span = document.createElement("span");
+    span.textContent = item.str;
+    const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
+    const angle = Math.atan2(tx[1], tx[0]);
+    const fontHeight = Math.hypot(tx[2], tx[3]);
+    span.style.left = `${tx[4]}px`;
+    span.style.top = `${tx[5] - fontHeight}px`;
+    span.style.fontSize = `${fontHeight}px`;
+    span.style.transform = `rotate(${angle}rad)`;
+    span.dataset.index = String(index);
+    layer.appendChild(span);
+    spans.push(span);
+    fullText += item.str;
+    if (index < items.length - 1) {
+      fullText += " ";
+    }
+  });
+
+  const normalizedPage = normalize(fullText);
+  pageHighlights.forEach(item => {
+    const target = normalize(item.text);
+    if (!target) return;
+    let start = normalizedPage.indexOf(target);
+    if (start === -1 && target.length > 40) {
+      start = normalizedPage.indexOf(target.slice(0, 40));
+    }
+    if (start === -1) {
+      item._failed = true;
+      return;
+    }
+    let cursor = 0;
+    let end = start + target.length;
+    spans.forEach(span => {
+      const chunk = span.textContent;
+      const chunkNorm = normalize(chunk);
+      const chunkStart = cursor;
+      const chunkEnd = cursor + chunkNorm.length;
+      if (chunkEnd > start && chunkStart < end) {
+        span.classList.add("highlight");
+      }
+      cursor = chunkEnd + 1;
+    });
+  });
+}
+
+async function loadDocument() {
+  if (!CONFIG.pdfBase64) {
+    setStatus("No PDF uploaded");
+    return;
+  }
+  const raw = atob(CONFIG.pdfBase64);
+  const bytes = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i += 1) {
+    bytes[i] = raw.charCodeAt(i);
+  }
+  pdfDoc = await pdfjsLib.getDocument({ data: bytes }).promise;
+  totalPages = pdfDoc.numPages;
+  currentPage = Math.min(Math.max(CONFIG.page || 1, 1), totalPages);
+  highlights = CONFIG.highlights || [];
+  await renderCurrentPage();
+  const failed = highlights.filter(item => item._failed).length;
+  if (failed > 0) {
+    setStatus(`${failed} sentence(s) could not be visually matched on this page view`);
+  } else if (highlights.length > 0) {
+    setStatus(`${highlights.length} sentence(s) highlighted`);
+  } else {
+    setStatus("");
+  }
+}
+
+document.getElementById("prevBtn").addEventListener("click", async () => {
+  if (currentPage > 1) {
+    currentPage -= 1;
+    await renderCurrentPage();
+  }
+});
+
+document.getElementById("nextBtn").addEventListener("click", async () => {
+  if (currentPage < totalPages) {
+    currentPage += 1;
+    await renderCurrentPage();
+  }
+});
+
+window.addEventListener("message", async function(event) {
+  if (event.data && event.data.type === "HIGHLIGHT_SENTENCE") {
+    const text = event.data.text;
+    const page = parseInt(event.data.page, 10);
+    console.log("HIGHLIGHT_SENTENCE message received:", text, "Page:", page);
+    if (!isNaN(page) && page !== currentPage) {
+      currentPage = page;
+      highlights = [{"page": currentPage, "text": text}];
+      await renderCurrentPage();
+    } else {
+      highlights = [{"page": currentPage, "text": text}];
+      const textLayer = document.querySelector(".textLayer");
+      if (textLayer && pdfDoc) {
+        const pageObj = await pdfDoc.getPage(currentPage);
+        const textContent = await pageObj.getTextContent();
+        const viewport = pageObj.getViewport({ scale: currentScale });
+        textLayer.innerHTML = "";
+        const pageHighlights = highlights.filter(item => item.page === currentPage);
+        renderTextLayer(textLayer, textContent, viewport, pageHighlights);
+      }
+    }
+    setTimeout(() => {
+      const firstHl = document.querySelector(".textLayer span.highlight");
+      if (firstHl) {
+        firstHl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 100);
+  }
+});
+
+document.getElementById("zoomInBtn").addEventListener("click", async () => {
+  if (currentScale < 3.0) {
+    currentScale += 0.25;
+    document.getElementById("zoomLabel").textContent = `${Math.round(currentScale * 100)}%`;
+    await renderCurrentPage();
+  }
+});
+
+document.getElementById("zoomOutBtn").addEventListener("click", async () => {
+  if (currentScale > 0.5) {
+    currentScale -= 0.25;
+    document.getElementById("zoomLabel").textContent = `${Math.round(currentScale * 100)}%`;
+    await renderCurrentPage();
+  }
+});
+
+loadDocument().catch(error => {
+  setStatus(`PDF viewer error: ${error.message}`);
+});
+</script>
+</body>
+</html>
