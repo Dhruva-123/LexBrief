@@ -4,7 +4,7 @@ An interactive Streamlit-based intelligence dashboard for segmenting, summarizin
 
 ---
 
-## 🌟 Key Capabilities
+## Key Capabilities
 
 ### 1. Document Ingestion & Interactive PDF Viewer
 * Supports uploading standard legal judgment PDFs up to 200MB.
@@ -50,7 +50,7 @@ The system features three distinct legal summarization strategies:
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 Legal_Rhetorical_Analyzer/
@@ -90,7 +90,7 @@ Legal_Rhetorical_Analyzer/
 
 ---
 
-## 🛠️ Setup & Installation
+## Setup & Installation
 
 ### 1. Prerequisites
 * Python 3.10 or 3.11 (recommended).
@@ -132,7 +132,7 @@ ollama pull qwen3:8b
 
 ---
 
-## 🚀 Running the Application
+## Running the Application
 
 Launch the Streamlit web application:
 ```bash
@@ -140,7 +140,7 @@ streamlit run app.py
 ```
 Open the provided local URL (usually `http://localhost:8501`) in your browser.
 
-### 📝 Step-by-Step Usage Guide
+### Step-by-Step Usage Guide
 
 1. **Upload Document**: Drag & drop or browse for a court judgment PDF in the bottom-left uploader panel.
 2. **Execute Rhetorical Analysis**: Click **Run Rhetorical Analysis** in the middle panel. This executes the BiLSTM-CRF model, tags each sentence, and caches/saves results under `outputs/`.
