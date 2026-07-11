@@ -1,6 +1,3 @@
-<img width="1916" height="784" alt="Screenshot 2026-07-11 092237" src="https://github.com/user-attachments/assets/36420527-a758-4076-9172-b757c6ece4e8" />
-<img width="1914" height="951" alt="Screenshot 2026-07-11 091949" src="https://github.com/user-attachments/assets/3b0cea2a-8e92-4884-a54d-882523ad6a07" />
-
 
 # Legal Rhetorical Analyzer
 
@@ -143,6 +140,9 @@ Launch the Streamlit web application:
 streamlit run app.py
 ```
 Open the provided local URL (usually `http://localhost:8501`) in your browser.
+
+<img width="1916" height="784" alt="Screenshot 2026-07-11 092237" src="https://github.com/user-attachments/assets/36420527-a758-4076-9172-b757c6ece4e8" />
+<img width="1914" height="951" alt="Screenshot 2026-07-11 091949" src="https://github.com/user-attachments/assets/3b0cea2a-8e92-4884-a54d-882523ad6a07" />
 
 ### Step-by-Step Usage Guide
 
