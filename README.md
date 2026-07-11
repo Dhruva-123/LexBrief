@@ -164,3 +164,5 @@ Open the provided local URL (usually `http://localhost:8501`) in your browser.
    * Review the prediction outcome and confidence.
    * Browse ranked influential passages and click **Locate in PDF** to jump directly to that page/sentence.
    * Download the explanation PDF report.
+  
+  **Follow this youtube video for better understanding : https://www.youtube.com/watch?v=mm9d5v9LtwI&t=1s**
