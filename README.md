@@ -1,3 +1,5 @@
+
+
 # Legal Rhetorical Analyzer
 
 An interactive Streamlit-based intelligence dashboard for segmenting, summarizing, and explaining court judgments. The system integrates state-of-the-art NLP models and architectures to assist legal professionals, researchers, and students in extracting key information, analyzing rhetorical structures, and understanding machine predictions.
